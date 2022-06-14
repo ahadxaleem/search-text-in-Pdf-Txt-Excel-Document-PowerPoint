@@ -1,11 +1,10 @@
 # import required module
 import os
 import fitz
-import docx2txt
-import textract
 import docx
 import re
 from pptx import Presentation
+import pandas as pd
 
 
 def add_bookmark(paragraph, bookmark_text, bookmark_name):
@@ -111,7 +110,7 @@ def searchDoc(file_in_dir, filename):
             # separator line
             print('<hr>', file=f)
             print('<h5>Paragraph ' + str(curr_para) + ' of ' + str(num_para) + '  <a href="' + file_in_dir +
-                   '#Bookmark=' + f'temp{paranum}' + '" target="_blank">Link</a></h5>', file=f)        # page number
+                  '#Bookmark=' + f'temp{paranum}' + '" target="_blank">Link</a></h5>', file=f)        # page number
             # use for offset for 1+ matches
             counter = 0
             for hit in ResSearch:
@@ -135,11 +134,12 @@ def searchDoc(file_in_dir, filename):
         print('<hr>', file=f)
         print('<p>No hits</p>', file=f)
 
+
 def searchPptx(file_in_dir, filename):
     # counter for hits
     hitcount = 0
-    pptx_text = Presentation(file_in_dir)
-    num_of_slides = len(pptx_text.slides)
+    pptx = Presentation(file_in_dir)
+    num_of_slides = len(pptx.slides)
     # insert document details as header for the results
     # separator line
     print('<hr>', file=f)
@@ -148,7 +148,7 @@ def searchPptx(file_in_dir, filename):
     print('<h3 title>' + 'PPTX File ' + '</h3>', file=f)
     # print('<h4><b>Author:</b> ' + str(df['Author'][ind]) + '</h4>', file=f)
     print('<h4>' + str(num_of_slides) + ' slides</h4>', file=f)
-    for idx, slide in enumerate(pptx_text.slides):
+    for idx, slide in enumerate(pptx.slides):
         pptx_text = ""
         for shape in slide.shapes:
             if hasattr(shape, "text"):
@@ -162,7 +162,7 @@ def searchPptx(file_in_dir, filename):
             # separator line
             print('<hr>', file=f)
             print('<h5>Slide ' + str(idx+1) + ' of ' + str(num_of_slides) + '  <a href="' + file_in_dir +
-                   '#Slide=' + str(idx+1) + '" target="_blank">Link</a></h5>', file=f)        # page number
+                  '#Slide=' + str(idx+1) + '" target="_blank">Link</a></h5>', file=f)        # page number
             # use for offset for 1+ matches
             counter = 0
             for hit in ResSearch:
@@ -184,6 +184,108 @@ def searchPptx(file_in_dir, filename):
         # separator line
         print('<hr>', file=f)
         print('<p>No hits</p>', file=f)
+
+
+def searchXls(file_in_dir, filename):
+    # counter for hits
+    hitcount = 0
+    df_sheet_all = pd.read_excel(file_in_dir, sheet_name=None)
+    num_of_sheet = len(df_sheet_all)
+    curr_sheet = 1
+    # insert document details as header for the results
+    # separator line
+    print('<hr>', file=f)
+    print('<h3 title><a href="' + file_in_dir +
+          '" target="_blank">' + filename + '</a></h3>', file=f)
+    print('<h3 title>' + 'XLS File ' + '</h3>', file=f)
+    # print('<h4><b>Author:</b> ' + str(df['Author'][ind]) + '</h4>', file=f)
+    print('<h4>' + str(num_of_sheet) + ' sheets</h4>', file=f)
+    xls_text = ""
+    for sheet in df_sheet_all:
+        for data in df_sheet_all[sheet]:
+            xls_text += str(df_sheet_all[sheet][data])
+
+            # print(type(df_sheet_all[sheet][data]))
+        # xls_text=re.sub('[\n,\t]',' ',xls_text)
+        # print(type(xls_text))
+        ResSearch = find_all(string, xls_text)
+        if len(ResSearch) != 0:
+            # add a bookmakr to every paragraph
+            # add_bookmark(paragraph=para, bookmark_text=f"temp{paranum}", bookmark_name=f"temp{paranum+1}")
+            hitcount += 1
+            # separator line
+            print('<hr>', file=f)
+            print('<h5>Sheet ' + str(curr_sheet) + ' of ' + str(num_of_sheet) + '  <a href="' + file_in_dir +
+                  '#sheet=' + sheet + '" target="_blank">Link</a></h5>', file=f)        # page number
+            # use for offset for 1+ matches
+            counter = 0
+            for hit in ResSearch:
+                comma = int(hit.find(','))
+                startchar = int(hit[1:comma]) + counter
+                endchar = int(hit[comma + 2:len(hit) - 1]) + counter
+                print('<hr>', file=f)
+                # separator line
+                # the returned text is 'buffertext' characters before and after the search term, and the search term is highlighted in italics
+                # the <i> tag is formatted in the CSS section of the HTML file
+                buffertext = xls_text[max(startchar-textbuffer, 0):startchar] + '<i>' + \
+                    xls_text[startchar:endchar] + '</i>' + \
+                    xls_text[endchar:endchar+textbuffer]
+                buffertext = ''.join(buffertext.splitlines())
+                print('<p>' + buffertext + '</p>', file=f)
+                counter = endchar
+    if hitcount == 0:
+        # separator line
+        print('<hr>', file=f)
+        print('<p>No hits</p>', file=f)
+
+
+def searchTxt(file_in_dir, filename):
+    # counter for hits
+    hitcount = 0
+    txt = open(file_in_dir, 'r', encoding='utf-8')
+    data = txt.read()
+    splat = data.split("\n\n")
+    number_of_para = len(splat)
+    # insert document details as header for the results
+    # separator line
+    print('<hr>', file=f)
+    print('<h3 title><a href="' + file_in_dir +
+          '" target="_blank">' + filename + '</a></h3>', file=f)
+    print('<h3 title>' + 'TXT File ' + '</h3>', file=f)
+    # print('<h4><b>Author:</b> ' + str(df['Author'][ind]) + '</h4>', file=f)
+    print('<h4>' + str(number_of_para) + ' paragraphs</h4>', file=f)
+    for curr_para, paragraph in enumerate(splat, 1):
+        ResSearch = find_all(string, paragraph)
+        if len(ResSearch) != 0:
+            # add a bookmakr to every paragraph
+            # add_bookmark(paragraph=para, bookmark_text=f"temp{paranum}", bookmark_name=f"temp{paranum+1}")
+            hitcount += 1
+            # separator line
+            print('<hr>', file=f)
+            print('<h5>Sheet ' + str(curr_para) + ' of ' + str(number_of_para) + '  <a href="' + file_in_dir +
+                  '#paragraph=' + str(curr_para) + '" target="_blank">Link</a></h5>', file=f)        # page number
+            # use for offset for 1+ matches
+            counter = 0
+            for hit in ResSearch:
+                comma = int(hit.find(','))
+                startchar = int(hit[1:comma]) + counter
+                endchar = int(hit[comma + 2:len(hit) - 1]) + counter
+                print('<hr>', file=f)
+                # separator line
+                # the returned text is 'buffertext' characters before and after the search term, and the search term is highlighted in italics
+                # the <i> tag is formatted in the CSS section of the HTML file
+                buffertext = paragraph[max(startchar-textbuffer, 0):startchar] + '<i>' + \
+                    paragraph[startchar:endchar] + '</i>' + \
+                    paragraph[endchar:endchar+textbuffer]
+                buffertext = ''.join(buffertext.splitlines())
+                print('<p>' + buffertext + '</p>', file=f)
+                counter = endchar
+    if hitcount == 0:
+        # separator line
+        print('<hr>', file=f)
+        print('<p>No hits</p>', file=f)
+        # print(number)
+        # print(paragraph)
 
 
 # regular expression search string
@@ -229,14 +331,20 @@ for filename in os.listdir(directory):
             searchDoc(file_in_dir, filename)
         elif extension == '.pptx':
             searchPptx(file_in_dir, filename)
+        elif extension == '.xls':
+            searchXls(file_in_dir, filename)
+        elif extension == '.txt':
+            searchTxt(file_in_dir, filename)
         else:
-            print('file not supported yet')
+            print(extension + ' file is not supported yet')
         # print(extension)
         # print(f)
 
-#-------------------------------------------------------------------------------------------------------------------------------------------
-print('<hr>', file = f)                                                             # separator line
-print('</body>', file = f)
-print('</html>', file = f)
-f.close()                                                                           # close the results file
-#-------------------------------------------------------------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------------------------------------------------------
+# separator line
+print('<hr>', file=f)
+print('</body>', file=f)
+print('</html>', file=f)
+# close the results file
+f.close()
+# -------------------------------------------------------------------------------------------------------------------------------------------
