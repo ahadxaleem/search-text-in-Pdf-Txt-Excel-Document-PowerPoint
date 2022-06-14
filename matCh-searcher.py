@@ -5,6 +5,7 @@ import docx2txt
 import textract
 import docx
 import re
+from pptx import Presentation
 
 
 def add_bookmark(paragraph, bookmark_text, bookmark_name):
@@ -134,6 +135,56 @@ def searchDoc(file_in_dir, filename):
         print('<hr>', file=f)
         print('<p>No hits</p>', file=f)
 
+def searchPptx(file_in_dir, filename):
+    # counter for hits
+    hitcount = 0
+    pptx_text = Presentation(file_in_dir)
+    num_of_slides = len(pptx_text.slides)
+    # insert document details as header for the results
+    # separator line
+    print('<hr>', file=f)
+    print('<h3 title><a href="' + file_in_dir +
+          '" target="_blank">' + filename + '</a></h3>', file=f)
+    print('<h3 title>' + 'PPTX File ' + '</h3>', file=f)
+    # print('<h4><b>Author:</b> ' + str(df['Author'][ind]) + '</h4>', file=f)
+    print('<h4>' + str(num_of_slides) + ' slides</h4>', file=f)
+    for idx, slide in enumerate(pptx_text.slides):
+        pptx_text = ""
+        for shape in slide.shapes:
+            if hasattr(shape, "text"):
+                pptx_text += shape.text
+        ResSearch = find_all(string, pptx_text)
+        # print('slide number %d' % idx+1)
+        if len(ResSearch) != 0:
+            # add a bookmakr to every paragraph
+            # add_bookmark(paragraph=para, bookmark_text=f"temp{paranum}", bookmark_name=f"temp{paranum+1}")
+            hitcount += 1
+            # separator line
+            print('<hr>', file=f)
+            print('<h5>Slide ' + str(idx+1) + ' of ' + str(num_of_slides) + '  <a href="' + file_in_dir +
+                   '#Slide=' + str(idx+1) + '" target="_blank">Link</a></h5>', file=f)        # page number
+            # use for offset for 1+ matches
+            counter = 0
+            for hit in ResSearch:
+                comma = int(hit.find(','))
+                startchar = int(hit[1:comma]) + counter
+                endchar = int(hit[comma + 2:len(hit) - 1]) + counter
+                print('<hr>', file=f)
+                # separator line
+                # the returned text is 'buffertext' characters before and after the search term, and the search term is highlighted in italics
+                # the <i> tag is formatted in the CSS section of the HTML file
+                buffertext = pptx_text[max(startchar-textbuffer, 0):startchar] + '<i>' + \
+                    pptx_text[startchar:endchar] + '</i>' + \
+                    pptx_text[endchar:endchar+textbuffer]
+                buffertext = ''.join(buffertext.splitlines())
+                print('<p>' + buffertext + '</p>', file=f)
+                counter = endchar
+    # docx_text.save(file_in_dir)
+    if hitcount == 0:
+        # separator line
+        print('<hr>', file=f)
+        print('<p>No hits</p>', file=f)
+
 
 # regular expression search string
 string = 'data|information|delete'
@@ -176,7 +227,16 @@ for filename in os.listdir(directory):
             searchPdf(file_in_dir, filename)
         elif extension == '.docx':
             searchDoc(file_in_dir, filename)
+        elif extension == '.pptx':
+            searchPptx(file_in_dir, filename)
         else:
             print('file not supported yet')
         # print(extension)
         # print(f)
+
+#-------------------------------------------------------------------------------------------------------------------------------------------
+print('<hr>', file = f)                                                             # separator line
+print('</body>', file = f)
+print('</html>', file = f)
+f.close()                                                                           # close the results file
+#-------------------------------------------------------------------------------------------------------------------------------------------
